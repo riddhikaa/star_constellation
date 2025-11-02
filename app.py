@@ -9,13 +9,22 @@ from werkzeug.utils import secure_filename
 import uuid
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend communication
+
+# FIXED: Enable CORS with proper configuration for all origins
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",  # Allow all origins (for development)
+        "allow_headers": ["Content-Type", "Accept"],
+        "expose_headers": ["Content-Type"],
+        "supports_credentials": False
+    }
+})
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
 RESULTS_FOLDER = 'results'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-MODEL_PATH = 'best.pt'  # Place your best.pt file here
+MODEL_PATH = 'best.pt'
 
 # Create necessary folders
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -32,94 +41,52 @@ except Exception as e:
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Constellation names mapping (from your dataset)
+# Constellation names mapping
 CONSTELLATION_NAMES = {
-    0: 'Aquila',
-    1: 'Bootes',
-    2: 'Canis Major',
-    3: 'Canis Minor',
-    4: 'Cassiopeia',
-    5: 'Cygnus',
-    6: 'Gemini',
-    7: 'Leo',
-    8: 'Lyra',
-    9: 'Moon',
-    10: 'Orion',
-    11: 'Pleiades',
-    12: 'Sagittarius',
-    13: 'Scorpius',
-    14: 'Taurus',
-    15: 'Ursa Major'
+    0: 'Aquila', 1: 'Bootes', 2: 'Canis Major', 3: 'Canis Minor',
+    4: 'Cassiopeia', 5: 'Cygnus', 6: 'Gemini', 7: 'Leo',
+    8: 'Lyra', 9: 'Moon', 10: 'Orion', 11: 'Pleiades',
+    12: 'Sagittarius', 13: 'Scorpius', 14: 'Taurus', 15: 'Ursa Major'
 }
 
 # Detailed constellation descriptions
 CONSTELLATION_DESCRIPTIONS = {
-    "Aquila": "Aquila, the Eagle, is a constellation on the celestial equator. Its brightest star, Altair, is one of the vertices of the Summer Triangle asterism. The constellation represents the eagle that carried Zeus's thunderbolts in Greek mythology.",
-    
-    "Bootes": "Bootes is a constellation in the northern sky, containing the bright star Arcturus. Its name comes from the Greek word meaning 'herdsman' or 'plowman'. Arcturus is the fourth-brightest star in the night sky and the brightest in the northern celestial hemisphere.",
-    
-    "Canis Major": "Canis Major, the Greater Dog, is a constellation in the southern celestial hemisphere. It contains Sirius, the brightest star in the night sky. In Greek mythology, it represents one of the dogs following Orion, the hunter.",
-    
-    "Canis Minor": "Canis Minor, the Lesser Dog, is a small constellation in the northern celestial hemisphere. Its brightest star, Procyon, forms one vertex of the Winter Triangle asterism. It represents the smaller of Orion's two hunting dogs.",
-    
-    "Cassiopeia": "Cassiopeia is a constellation in the northern sky, named after the vain queen in Greek mythology. It is easily recognizable due to its distinctive 'W' or 'M' shape formed by five bright stars. The constellation is circumpolar in northern latitudes, meaning it never sets below the horizon.",
-    
-    "Cygnus": "Cygnus, the Swan, is a northern constellation lying on the plane of the Milky Way. Its brightest star, Deneb, forms one vertex of the Summer Triangle. The constellation's most recognizable feature is the asterism known as the Northern Cross.",
-    
-    "Gemini": "Gemini, the Twins, is a constellation of the zodiac lying between Taurus and Cancer. Its brightest stars are Castor and Pollux, named after the twin brothers in Greek and Roman mythology. The constellation is most visible in the winter sky.",
-    
-    "Leo": "Leo, the Lion, is a constellation of the zodiac lying between Cancer and Virgo. Its brightest star, Regulus, is one of the brightest stars in the night sky. The constellation is easily identifiable by a distinctive sickle-shaped asterism representing the lion's head and chest.",
-    
-    "Lyra": "Lyra is a small constellation in the northern sky, representing the lyre of Orpheus in Greek mythology. Its brightest star, Vega, is one of the brightest stars visible from Earth and forms one vertex of the Summer Triangle. Lyra also contains the famous Ring Nebula.",
-    
-    "Moon": "The Moon is Earth's only natural satellite and the fifth largest satellite in the Solar System. It is the brightest object in the night sky after the Sun. The Moon's gravitational influence produces Earth's tides and slightly lengthens Earth's day.",
-    
-    "Orion": "Orion is one of the most prominent and recognizable constellations in the night sky. Named after a hunter in Greek mythology, it contains some of the brightest stars including Betelgeuse and Rigel. The three stars forming Orion's Belt are among the most recognizable patterns in the sky.",
-    
-    "Pleiades": "The Pleiades, also known as the Seven Sisters, is an open star cluster in the constellation Taurus. It is one of the nearest star clusters to Earth and the most obvious to the naked eye. In Greek mythology, the Pleiades were the seven daughters of Atlas and Pleione.",
-    
-    "Sagittarius": "Sagittarius is a zodiac constellation in the southern celestial hemisphere, traditionally represented as a centaur drawing a bow. It is one of the brightest constellations and contains the center of our Milky Way galaxy. The constellation is best viewed in summer.",
-    
-    "Scorpius": "Scorpius, the Scorpion, is a zodiac constellation lying between Libra and Sagittarius. Its brightest star, Antares, is a red supergiant and one of the largest stars visible to the naked eye. The constellation's distinctive J-shaped pattern of bright stars represents a scorpion.",
-    
-    "Taurus": "Taurus, the Bull, is a large and prominent constellation in the northern hemisphere's winter sky. It contains the bright star Aldebaran, which represents the bull's eye, and two famous star clusters: the Pleiades and the Hyades. In Greek mythology, the constellation represents Zeus in the form of a bull.",
-    
-    "Ursa Major": "Ursa Major, the Great Bear, is a constellation in the northern sky. Its most recognizable feature is the Big Dipper asterism, which is one of the most familiar patterns in the sky. The Big Dipper's pointer stars lead to Polaris, the North Star, making it useful for navigation."
+    "Aquila": "Aquila, the Eagle, is a constellation on the celestial equator. Its brightest star, Altair, is one of the vertices of the Summer Triangle asterism.",
+    "Bootes": "Bootes is a constellation in the northern sky, containing the bright star Arcturus, the fourth-brightest star in the night sky.",
+    "Canis Major": "Canis Major, the Greater Dog, contains Sirius, the brightest star in the night sky. It represents one of Orion's hunting dogs.",
+    "Canis Minor": "Canis Minor, the Lesser Dog, contains Procyon, forming one vertex of the Winter Triangle asterism.",
+    "Cassiopeia": "Cassiopeia is easily recognizable due to its distinctive 'W' or 'M' shape formed by five bright stars.",
+    "Cygnus": "Cygnus, the Swan, contains Deneb and forms the Northern Cross asterism.",
+    "Gemini": "Gemini, the Twins, contains the bright stars Castor and Pollux, named after twin brothers in Greek mythology.",
+    "Leo": "Leo, the Lion, contains Regulus and is easily identified by its distinctive sickle-shaped asterism.",
+    "Lyra": "Lyra represents Orpheus's lyre and contains Vega, one of the brightest stars visible from Earth.",
+    "Moon": "The Moon is Earth's only natural satellite and the brightest object in the night sky after the Sun.",
+    "Orion": "Orion is one of the most recognizable constellations, containing Betelgeuse, Rigel, and the famous Orion's Belt.",
+    "Pleiades": "The Pleiades, also known as the Seven Sisters, is an open star cluster in Taurus, one of the nearest to Earth.",
+    "Sagittarius": "Sagittarius contains the center of our Milky Way galaxy and is represented as a centaur drawing a bow.",
+    "Scorpius": "Scorpius contains the red supergiant Antares and has a distinctive J-shaped pattern representing a scorpion.",
+    "Taurus": "Taurus contains Aldebaran and two famous star clusters: the Pleiades and the Hyades.",
+    "Ursa Major": "Ursa Major, the Great Bear, contains the Big Dipper asterism, useful for navigation."
 }
 
-# Mythological and astronomical facts
+# Quick facts
 CONSTELLATION_FACTS = {
-    "Aquila": "• Contains the bright star Altair\n• Part of the Summer Triangle\n• Visible from June to November\n• Ancient constellation recognized by Ptolemy",
-    
-    "Bootes": "• Home to the brightest star in the northern hemisphere: Arcturus\n• Contains several notable galaxies\n• Visible from March to September\n• Name means 'plowman' or 'ox-driver'",
-    
-    "Canis Major": "• Contains Sirius, the brightest star in Earth's night sky\n• Follows Orion across the sky\n• Best visible in winter\n• Home to several star clusters",
-    
-    "Canis Minor": "• One of Orion's two hunting dogs\n• Contains the bright star Procyon\n• Small constellation with few notable stars\n• Forms part of the Winter Triangle",
-    
-    "Cassiopeia": "• Circumpolar constellation (never sets)\n• Distinctive 'W' or 'M' shape\n• Named after an Ethiopian queen\n• Contains several notable nebulae",
-    
-    "Cygnus": "• Also known as the Northern Cross\n• Located in the Milky Way\n• Contains Deneb, one of the most luminous stars\n• Rich in deep-sky objects",
-    
-    "Gemini": "• Third zodiac constellation\n• Represents the twins Castor and Pollux\n• Best viewed in January and February\n• Contains several meteor shower radiants",
-    
-    "Leo": "• Fifth zodiac constellation\n• Contains the bright star Regulus\n• Home to many galaxies\n• Best visible in spring",
-    
-    "Lyra": "• Small but prominent constellation\n• Contains Vega, fifth brightest star\n• Home to the Ring Nebula (M57)\n• Represents Orpheus's lyre",
-    
-    "Moon": "• Average distance: 384,400 km from Earth\n• Diameter: 3,474 km\n• Synchronous rotation (same side always faces Earth)\n• Only celestial body humans have visited",
-    
-    "Orion": "• One of the most recognizable constellations\n• Contains Betelgeuse and Rigel\n• Home to the Orion Nebula (M42)\n• Best viewed in winter months",
-    
-    "Pleiades": "• Open star cluster, not a constellation\n• Also called M45 or Seven Sisters\n• About 444 light-years from Earth\n• Contains over 1,000 confirmed stars",
-    
-    "Sagittarius": "• Points toward the galactic center\n• Ninth zodiac constellation\n• Rich in nebulae and star clusters\n• Best viewed in summer",
-    
-    "Scorpius": "• One of the zodiac constellations\n• Contains the red supergiant Antares\n• Located in a rich star field\n• Best viewed in summer",
-    
-    "Taurus": "• Second zodiac constellation\n• Contains two famous star clusters\n• Home to the Crab Nebula (M1)\n• Best viewed in winter",
-    
-    "Ursa Major": "• Third largest constellation\n• Contains the Big Dipper asterism\n• Pointer stars lead to Polaris\n• Visible year-round in northern latitudes"
+    "Aquila": "• Contains Altair\n• Part of Summer Triangle\n• Visible June-November",
+    "Bootes": "• Home to Arcturus\n• Visible March-September\n• Name means 'plowman'",
+    "Canis Major": "• Contains Sirius\n• Follows Orion\n• Best visible in winter",
+    "Canis Minor": "• Contains Procyon\n• Forms Winter Triangle\n• Small constellation",
+    "Cassiopeia": "• Circumpolar constellation\n• Distinctive 'W' shape\n• Named after a queen",
+    "Cygnus": "• Northern Cross\n• Contains Deneb\n• Located in Milky Way",
+    "Gemini": "• Third zodiac sign\n• Twins Castor & Pollux\n• Best in Jan-Feb",
+    "Leo": "• Fifth zodiac sign\n• Contains Regulus\n• Best visible in spring",
+    "Lyra": "• Contains Vega\n• Home to Ring Nebula\n• Orpheus's lyre",
+    "Moon": "• 384,400 km from Earth\n• Diameter: 3,474 km\n• Only visited celestial body",
+    "Orion": "• Most recognizable\n• Contains Orion Nebula\n• Best in winter",
+    "Pleiades": "• Seven Sisters\n• 444 light-years away\n• Over 1,000 stars",
+    "Sagittarius": "• Points to galactic center\n• Ninth zodiac sign\n• Best in summer",
+    "Scorpius": "• Contains Antares\n• Zodiac constellation\n• Best in summer",
+    "Taurus": "• Second zodiac sign\n• Contains Pleiades\n• Best in winter",
+    "Ursa Major": "• Third largest\n• Contains Big Dipper\n• Visible year-round"
 }
 
 
@@ -134,7 +101,7 @@ def api_check():
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Check if the API is running and model is loaded"""
+    """Check if API is running and model is loaded"""
     return jsonify({
         'status': 'healthy',
         'model_loaded': model is not None,
@@ -142,9 +109,14 @@ def health_check():
         'constellations': list(CONSTELLATION_NAMES.values())
     })
 
-@app.route('/api/predict', methods=['POST'])
+
+@app.route('/api/predict', methods=['POST', 'OPTIONS'])
 def predict():
     """Main prediction endpoint"""
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     if model is None:
         return jsonify({'error': 'Model not loaded'}), 500
     
@@ -169,6 +141,7 @@ def predict():
         
         # Save uploaded file
         file.save(input_path)
+        print(f"File saved: {input_path}")
         
         # Perform inference
         results = model.predict(
@@ -177,8 +150,8 @@ def predict():
             project=RESULTS_FOLDER,
             name=unique_id,
             exist_ok=True,
-            conf=0.25,  # Confidence threshold
-            iou=0.45    # IoU threshold for NMS
+            conf=0.25,
+            iou=0.45
         )
         
         # Process results
@@ -195,10 +168,9 @@ def predict():
             detections.append({
                 'constellation': constellation_name,
                 'confidence': round(confidence * 100, 2),
-                'bbox': box.xyxy[0].tolist()  # Bounding box coordinates [x1, y1, x2, y2]
+                'bbox': box.xyxy[0].tolist()
             })
             
-            # Count constellations
             constellation_counts[constellation_name] = constellation_counts.get(constellation_name, 0) + 1
         
         # Get the annotated image path
@@ -218,14 +190,16 @@ def predict():
                 'facts': CONSTELLATION_FACTS.get(const_name, "No additional facts available.")
             })
         
-        # Sort by count (most detected first)
+        # Sort by count
         found_constellations.sort(key=lambda x: x['count'], reverse=True)
         
-        # Cleanup uploaded file (keep results for debugging if needed)
+        # Cleanup
         try:
             os.remove(input_path)
         except:
             pass
+        
+        print(f"Successfully processed image. Found {len(constellation_counts)} unique constellations")
         
         return jsonify({
             'success': True,
@@ -244,7 +218,8 @@ def predict():
         print(f"Error during prediction: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e), 'success': False}), 500
+
 
 @app.route('/api/constellations', methods=['GET'])
 def get_constellation_info():
@@ -262,10 +237,10 @@ def get_constellation_info():
         'constellations': constellations
     })
 
+
 @app.route('/api/constellation/<name>', methods=['GET'])
 def get_single_constellation(name):
     """Get detailed information about a specific constellation"""
-    # Find constellation by name (case-insensitive)
     constellation_name = None
     for const_name in CONSTELLATION_NAMES.values():
         if const_name.lower() == name.lower():
@@ -281,6 +256,8 @@ def get_single_constellation(name):
         'facts': CONSTELLATION_FACTS.get(constellation_name, "No additional facts available.")
     })
 
+
 if __name__ == '__main__':
-    # For local development
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # For production on Render
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
