@@ -129,7 +129,7 @@ def api_check():
     return jsonify({
         'status': 'ok',
         'message': 'API is running smoothly!'
-    }), 200
+    })
 
 
 @app.route('/api/health', methods=['GET'])
