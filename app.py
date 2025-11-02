@@ -122,6 +122,16 @@ CONSTELLATION_FACTS = {
     "Ursa Major": "• Third largest constellation\n• Contains the Big Dipper asterism\n• Pointer stars lead to Polaris\n• Visible year-round in northern latitudes"
 }
 
+
+@app.route('/', methods=['GET'])
+def api_check():
+    """Basic API health check"""
+    return jsonify({
+        'status': 'ok',
+        'message': 'API is running smoothly!'
+    }), 200
+
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Check if the API is running and model is loaded"""
